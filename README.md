@@ -47,3 +47,50 @@ CREATE TABLE success_killed(
 )ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='秒杀成功明细表';
 ```
 
+## 设计Dao接口
+
+`SeckillDao接口`
+
+```
+public interface SeckillDao {
+    /**
+     * 减库存
+     * @param seckillId
+     * @param killTime
+     * @return
+     */
+    int reduceNumber(@Param("seckillId") long seckillId, @Param("killTime") Date killTime);
+
+    /**
+     * 通过id查看秒杀商品
+     * @param seckillId
+     * @return
+     */
+    Seckill queryById(long seckillId);
+
+    /**
+     * 根据偏移量查询秒杀商品列表
+     * @param offset
+     * @param limit
+     * java没有保存形参的记录，因此在运行期queryall(int offset,int limit)->queryAll(arg0,arg1)，因此加上@Param来告诉实际形参的名字
+     */
+    List<Seckill> queryAll(@Param("offset") int offset, @Param("limit") int limit);
+}
+```
+
+`SuccessKilledDao`
+
+```
+public interface SuccessKilledDao {
+    /**
+     * 插入购买明细，可过滤重复（联合主键）
+     * @param seckillId
+     * @param userPhone
+     * @return
+     */
+    int insertSuccessKilled(@Param("seckillId") long seckillId, @Param("userPhone") long userPhone);
+
+    SuccessKilled queryByIdWithSeckill(@Param("seckillId") long seckillId,@Param("userPhone")long userPhone);
+}
+```
+
