@@ -14,6 +14,8 @@ import org.seckill.exception.SeckillCloseException;
 import org.seckill.exception.SeckillException;
 import org.seckill.service.SeckillService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import javax.xml.crypto.Data;
@@ -25,6 +27,7 @@ import java.util.List;
  * @description: sad
  * @Date:Created in 22:03 2018/5/21
  */
+@Service
 public class SeckillServiceImpl implements SeckillService {
     private static final Log LOG = LogFactory.getLog(SeckillServiceImpl.class);
     @Autowired
@@ -33,7 +36,7 @@ public class SeckillServiceImpl implements SeckillService {
     private SuccessKilledDao successKilledDao;
 
     //用于混淆md5
-    private final String salt = "sajdkgsafb vjdsk723823";
+    private final String salt = "sajdkgsafbvjdsk723823";
 
     @Override
     public List<Seckill> getSeckillList() {
@@ -48,7 +51,9 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
     public Exposer exportSeckillUrl(long seckillId) {
         Seckill seckill = seckillDao.queryById(seckillId);
+        String md5 = getMd5(seckillId);
         if (seckill == null) {
+            System.out.println("seckill" + seckill + "  " + seckillId);
             return new Exposer(false, seckillId);
         }
         Date startTime = seckill.getStartTime();
@@ -58,14 +63,14 @@ public class SeckillServiceImpl implements SeckillService {
         if (nowTime.getTime() < startTime.getTime() || nowTime.getTime() > endTime.getTime()) {
             return new Exposer(false, seckillId, nowTime.getTime(), startTime.getTime(), endTime.getTime());
         }
-
-        String md5 = getMd5(seckillId);
         return new Exposer(true, md5, seckillId);
     }
 
     @Override
+    @Transactional
     public SeckillExecution executeSeckill(long seckillId, long userPhone, String md5) throws SeckillException, RepeatKillException, SeckillCloseException {
-        if (md5 == null || md5.equals(getMd5(seckillId))) {
+        //如果md5的值不匹配，则判断秒杀地址错误，返回秒杀数据被重写
+        if (md5 == null || !md5.equals(getMd5(seckillId))) {
             throw new SeckillException("seckill data rewrite");
         }
         //执行秒杀逻辑：减库存 + 记录购买行为
@@ -100,6 +105,7 @@ public class SeckillServiceImpl implements SeckillService {
     private String getMd5(long seckillId) {
         String base = seckillId + "/" + salt;
         String md5 = DigestUtils.md5DigestAsHex(base.getBytes());
+        System.out.println("加密后的md5" + md5);
         return md5;
     }
 }

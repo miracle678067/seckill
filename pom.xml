@@ -86,6 +86,7 @@
       <groupId>javax.servlet</groupId>
       <artifactId>javax.servlet-api</artifactId>
       <version>3.1.0</version>
+      <scope>provided</scope>
     </dependency>
 
     <!--spring依赖-->
@@ -133,6 +134,28 @@
       <artifactId>spring-test</artifactId>
       <version>5.0.3.RELEASE</version>
     </dependency>
+
+    <!--jackson2.x相关包-->
+      <dependency>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        <version>2.9.2</version>
+      </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>2.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.module</groupId>
+      <artifactId>jackson-module-jaxb-annotations</artifactId>
+      <version>2.9.2</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -170,5 +193,19 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.tomcat.maven</groupId>
+        <artifactId>tomcat7-maven-plugin</artifactId>
+        <configuration>
+          <url>http://localhost:8080/manager/text</url>
+          <server>tomcat8</server>
+          <username>tomcat</username>
+          <password>tomcat</password>
+          <port>8080</port>
+          <path>/</path>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 </project>

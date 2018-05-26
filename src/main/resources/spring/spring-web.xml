@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/mvc
+       http://www.springframework.org/schema/mvc/spring-mvc.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd">
+    <!--1.配置mvc-->
+    <!--（1）开启springmvc注解模式，自动注册DefaultAnnotationHandlerMapping和AnnotationMethodHandlerAdapter
+        （2）提供一系列：数据绑定，数字和日期的format，@Numberformat，@DataTimeFormat,xml,json的支持
+    -->
+    <mvc:annotation-driven>
+        <mvc:message-converters>
+            <bean class="org.springframework.http.converter.ResourceHttpMessageConverter" >
+            </bean>
+            <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter" >
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>text/html;charset=UTF-8</value>
+                        <value>application/json;charset=UTF-8</value>
+                    </list>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+
+    <!--2.加入对静态资源的处理-->
+    <mvc:default-servlet-handler/>
+<!--3.配置jsp-->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+        <property name="prefix" value="/WEB-INF/jsp/"/>
+        <property name="suffix" value=".jsp"/>
+     </bean>
+    <!--4.配置bean扫描包-->
+    <context:component-scan base-package="org.seckill.web"/>
+</beans>

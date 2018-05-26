@@ -6,6 +6,7 @@ import org.seckill.dto.SeckillExecution;
 import org.seckill.exception.RepeatKillException;
 import org.seckill.exception.SeckillCloseException;
 import org.seckill.exception.SeckillException;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
