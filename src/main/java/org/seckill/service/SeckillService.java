@@ -45,4 +45,16 @@ public interface SeckillService {
      * @param md5 匹配md5是否一致，判断用户秒杀地址是否正常
      */
     SeckillExecution executeSeckill(long seckillId, long userPhone, String md5) throws SeckillException,RepeatKillException,SeckillCloseException;
+
+    /**
+     * 通过存储过程执行秒杀操作
+     * @param seckillId
+     * @param userPhone
+     * @param md5
+     * @return
+     * @throws SeckillException
+     * @throws RepeatKillException
+     * @throws SeckillCloseException
+     */
+    SeckillExecution executeSeckillProcedure(long seckillId, long userPhone, String md5) ;
 }

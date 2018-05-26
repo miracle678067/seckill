@@ -9,6 +9,7 @@ E:\web_workplace\seckill\src\main\java\org\seckill\service\SeckillService.java
 E:\web_workplace\seckill\src\main\java\org\seckill\bean\SuccessKilled.java
 E:\web_workplace\seckill\src\main\java\org\seckill\service\impl\SeckillServiceImpl.java
 E:\web_workplace\seckill\src\main\java\org\seckill\exception\SeckillException.java
+E:\web_workplace\seckill\src\main\java\org\seckill\dao\cache\RedisDao.java
 E:\web_workplace\seckill\src\main\java\org\seckill\exception\RepeatKillException.java
 E:\web_workplace\seckill\src\main\java\org\seckill\exception\SeckillCloseException.java
 E:\web_workplace\seckill\src\main\java\org\seckill\enums\SeckillStateEnum.java

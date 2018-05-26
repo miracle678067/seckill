@@ -343,6 +343,242 @@ handleSeckillkill:function(seckillId,node){
     },
 ```
 
+## 优化
+
+### 使用redis后端缓存
+
+未使用redis之前，每一次暴露秒杀地址都需要从数据库进行查询再返回给java客户端，网络延迟和GC会使返回结果时间过长，使用redis之后，每次暴露秒杀地址时先从缓存查看是否存在响应数据，如果有，则直接从缓存中取数据，否则再从数据库查询，最后将查询的结果放到缓存中，方便下次使用，从而缩短查询结果时间。
+
+- 首先需引入相应的依赖：
+
+```
+ <!--redis客户端-->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>2.9.0</version>
+    </dependency>
+
+    <!--redis内部没有实现序列化，因此需要添加自定义序列化依赖-->
+    <dependency>
+      <groupId>com.dyuproject.protostuff</groupId>
+      <artifactId>protostuff-core</artifactId>
+      <version>1.1.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.dyuproject.protostuff</groupId>
+      <artifactId>protostuff-runtime</artifactId>
+      <version>1.1.3</version>
+    </dependency>
+```
+
+- 接着设计redis缓存的逻辑
+
+```
+public Seckill getSeckill(long seckillId){
+        //redis操作逻辑
+        try {
+            Jedis jedis = jedisPool.getResource();
+            try {
+                String key = "seckill:"+seckillId;
+
+                //redis内部没有实现序列化操作，因此需要进行自定义序列化
+                //get->拿到字节数组bytes[]->进行反序列化—>Object
+                byte[] bytes = jedis.get(key.getBytes());
+                if (bytes != null){
+                    //空对象
+                    Seckill seckill = schema.newMessage();
+                    //seckill被反序列化
+                    ProtobufIOUtil.mergeFrom(bytes,seckill,schema);
+                }
+            } finally {
+                jedis.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    public String putSeckill(Seckill seckill){
+        try {
+            Jedis jedis = jedisPool.getResource();
+            //set Object->序列化->bytes[]
+            try {
+                String key = "seckill:"+seckill.getSeckillId();
+                byte[] bytes = ProtobufIOUtil.toByteArray(seckill,schema,
+                        LinkedBuffer.allocate(LinkedBuffer.DEFAULT_BUFFER_SIZE));
+
+                //缓存超时
+                int timeout = 60*60;
+                String result = jedis.setex(key.getBytes(),timeout,bytes);
+                return result;
+            } finally {
+                jedis.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+```
+
+- 修改SeckillServiceImpl.java
+
+```
+  Seckill seckill = redisDao.getSeckill(seckillId);
+        if (seckill == null){
+            seckill = seckillDao.queryById(seckillId);
+            if (seckill == null){
+                return new Exposer(false, seckillId);
+            }else {
+                redisDao.putSeckill(seckill);
+            }
+        }
+```
+
+### 秒杀操作优化
+
+**优化前：**update->insert->commit(中间需经历两次「网络延迟」和「GC」)
+
+**优化后：**insert->update->commit(通过调整插入和更新的顺序，在进行insert操作后判断update是否需要执行（insert返回1，则插入成功，需执行update，否则插入失败，不需执行update操作），从而将延时时间缩小为原来的一半)
+
+```
+/* int updateCount = seckillDao.reduceNumber(seckillId, nowTime);
+            if (updateCount <= 0) {
+                //没有更新到记录
+                throw new SeckillCloseException("seckill is closed");
+            } else {
+                //记录购买行为
+                int insertCount = successKilledDao.insertSuccessKilled(seckillId, userPhone);
+                if (insertCount <= 0) {
+                    //重复秒杀
+                    throw new RepeatKillException("seckill repeated");
+                } else {
+                    SuccessKilled successKilled = successKilledDao.queryByIdWithSeckill(seckillId, userPhone);
+                    return new SeckillExecution(seckillId, SeckillStateEnum.SUCCESS, successKilled);
+                }
+            }*/
+            //记录购买行为
+            int insertCount = successKilledDao.insertSuccessKilled(seckillId, userPhone);
+            if (insertCount <= 0) {
+                //重复秒杀
+                throw new RepeatKillException("seckill repeated");
+            } else {
+                int updateCount = seckillDao.reduceNumber(seckillId, nowTime);
+                if (updateCount <= 0) {
+                    //没有更新到记录
+                    throw new SeckillCloseException("seckill is closed");
+                } else {
+                    SuccessKilled successKilled = successKilledDao.queryByIdWithSeckill(seckillId, userPhone);
+                    return new SeckillExecution(seckillId, SeckillStateEnum.SUCCESS, successKilled);
+                }
+            }
+```
+
+#### 深度优化
+
+使用存储过程执行秒杀操作，使用存储过程使所有的数据访问都在服务器内部进行，不需传输局到其他终端，能有效缩短响应时间（之前是每进行一步都需返回到java客户端）。
+
+- 定义存储过程
+
+```
+-- 秒杀执行存储过程
+DELIMITER $$ -- console ; 转换为 $$
+-- 定义存储过程
+-- 参数: in 输入参数; out 输出参数
+-- row_count():返回上一条修改类型sql(delete,insert,update)的影响行数
+-- row_count: 0:未修改数据; >0:表示修改的行数; <0:sql错误/未执行修改sql
+CREATE PROCEDURE `seckill`.`execute_seckill`
+  (in v_seckill_id bigint,in v_phone bigint,
+    in v_kill_time timestamp,out r_result int)
+  BEGIN
+    DECLARE insert_count int DEFAULT 0;
+    START TRANSACTION;
+    insert ignore into success_killed
+      (seckill_id,user_phone,create_time)
+      values (v_seckill_id,v_phone,v_kill_time);
+    select row_count() into insert_count;
+    IF (insert_count = 0) THEN
+      ROLLBACK;
+      set r_result = -1;
+    ELSEIF(insert_count < 0) THEN
+      ROLLBACK;
+      SET R_RESULT = -2;
+    ELSE
+      update seckill
+      set number = number-1
+      where seckill_id = v_seckill_id
+        and end_time > v_kill_time
+        and start_time < v_kill_time
+        and number > 0;
+      select row_count() into insert_count;
+      IF (insert_count = 0) THEN
+        ROLLBACK;
+        set r_result = 0;
+      ELSEIF (insert_count < 0) THEN
+        ROLLBACK;
+        set r_result = -2;
+      ELSE
+        COMMIT;
+        set r_result = 1;
+      END IF;
+    END IF;
+  END;
+$$
+-- 存储过程定义结束
+```
+
+- 在dao层新增`void killByProcedure(Map<String,Object> paramMap);`  接口，修改`SeckillDao.xml`
+
+```
+ <!--mybatis调用存储过程-->
+    <select id="killByProcedure" statementType="CALLABLE">
+        call execute_seckill(
+          #{seckillId,jdbcType=BIGINT,mode=IN},
+          #{phone,jdbcType=TIMESTAMP,mode=IN},
+          #{killTime,jdbcType=BIGINT,mode=IN},
+          #{result,jdbcType=INTEGER,mode=OUT}
+        )
+    </select>
+```
+
+- 修改`SeckillServiceImpl.java`  
+
+```
+public SeckillExecution executeSeckillProcedure(long seckillId, long userPhone, String md5) {
+        if (md5 == null ||!md5.equals(getMd5(seckillId))){
+            return new SeckillExecution(seckillId,SeckillStateEnum.DATA_REWRITE);
+        }
+        Date killTime = new Date();
+        Map<String,Object> map = new HashMap<>();
+        map.put("seckillId",seckillId);
+        map.put("phone",userPhone);
+        map.put("killTime",killTime);
+        map.put("result",null);
+        //执行存储过程，result被赋值
+        try {
+            seckillDao.killByProcedure(map);
+            int result = MapUtils.getInteger(map,"result",-2);
+            System.out.println(result);
+            if (result == 1){
+                SuccessKilled successKilled = successKilledDao
+                        .queryByIdWithSeckill(seckillId,userPhone);
+                return new SeckillExecution(seckillId,SeckillStateEnum.SUCCESS,successKilled);
+            }else {
+                return new SeckillExecution(seckillId,SeckillStateEnum.stateOf(result));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new SeckillExecution(seckillId,SeckillStateEnum.INNER_ERROR);
+        }
+```
+
+- 修改`SeckillController.java`  
+
+```
+SeckillExecution execution = seckillService.executeSeckillProcedure(seckillId,userPhone,md5);
+```
+
 ## 遇到的问题：
 
 - @Responsebody返回乱码
