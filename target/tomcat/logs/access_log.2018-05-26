@@ -941,3 +941,13 @@
 0:0:0:0:0:0:0:1 - - [26/May/2018:20:07:53 +0800] "POST /seckill/1000/2de547f429a7bb6af85ddc2af231837d/execution HTTP/1.1" 200 125 http-bio-8080-exec-8 32
 0:0:0:0:0:0:0:1 - - [26/May/2018:20:08:15 +0800] "GET /seckill/1001/detail HTTP/1.1" 200 3183 http-bio-8080-exec-9 12
 0:0:0:0:0:0:0:1 - - [26/May/2018:20:08:15 +0800] "GET /seckill/time/now HTTP/1.1" 200 61 http-bio-8080-exec-10 5
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:39 +0800] "GET /seckill/list HTTP/1.1" 200 4442 http-bio-8080-exec-1 5001
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:41 +0800] "GET /seckill/1001/detail HTTP/1.1" 200 3183 http-bio-8080-exec-6 53
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:41 +0800] "GET /resources/script/seckill.js HTTP/1.1" 304 - http-bio-8080-exec-7 45
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:41 +0800] "GET /seckill/time/now HTTP/1.1" 200 61 http-bio-8080-exec-8 152
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:41 +0800] "POST /seckill/1001/exposer HTTP/1.1" 200 148 http-bio-8080-exec-9 104
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:04:42 +0800] "POST /seckill/1001/768a01e11229b3c5c26482632a502c9b/execution HTTP/1.1" 200 345 http-bio-8080-exec-10 76
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:05:38 +0800] "GET /seckill/1001/detail HTTP/1.1" 200 3183 http-bio-8080-exec-10 7
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:05:38 +0800] "GET /seckill/time/now HTTP/1.1" 200 61 http-bio-8080-exec-10 3
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:05:38 +0800] "POST /seckill/1001/exposer HTTP/1.1" 200 148 http-bio-8080-exec-10 9
+0:0:0:0:0:0:0:1 - - [26/May/2018:22:05:40 +0800] "POST /seckill/1001/768a01e11229b3c5c26482632a502c9b/execution HTTP/1.1" 200 125 http-bio-8080-exec-10 20
